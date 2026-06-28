@@ -1,0 +1,36 @@
+.footer {
+  background: var(--dark-2);
+  border-top: 1px solid var(--border);
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.brand {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  display: block;
+  margin-bottom: 0.8rem;
+}
+
+.socials {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.socials a {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  transition: color var(--transition);
+  text-decoration: none;
+}
+.socials a:hover { color: var(--gold); }
+
+.footer p {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
