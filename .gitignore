@@ -1,5 +1,19 @@
-﻿**/__pycache__/
+﻿# Python / Backend
+**/__pycache__/
 **/*.pyc
 **/instance/
+**/.venv/
+duky-backend/.venv/
+
+# Variables de entorno (NUNCA subir)
 **/.env
+
+# Node / Frontend
+node_modules/
 duky-barber/node_modules/
+dist/
+duky-barber/dist/
+
+# Sistema
+.DS_Store
+Thumbs.db

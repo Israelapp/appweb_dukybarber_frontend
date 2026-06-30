@@ -1,35 +1,91 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SERVICIOS } from "../data/servicios";
 import styles from "./Reserva.module.css";
 
-const INITIAL = { nombre: "", email: "", telefono: "", servicio: "", fecha: "" };
+const API = "http://localhost:5000/api";
+const INITIAL = { nombre: "", email: "", telefono: "", servicio: "", fecha: "", hora: "" };
+
+function diasNoTrabajo(diasTrabajo) {
+  const todos = [0, 1, 2, 3, 4, 5, 6];
+  const trabaja = diasTrabajo.split(",").map(d => {
+    const n = parseInt(d);
+    return n === 7 ? 0 : n;
+  });
+  return todos.filter(d => !trabaja.includes(d));
+}
 
 export default function Reserva() {
-  const [form, setForm]       = useState(INITIAL);
-  const [errors, setErrors]   = useState({});
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [form, setForm]         = useState(INITIAL);
+  const [errors, setErrors]     = useState({});
+  const [loading, setLoading]   = useState(false);
+  const [success, setSuccess]   = useState(false);
   const [serverError, setServerError] = useState("");
 
+  const [slots, setSlots]       = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [config, setConfig]     = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/config`)
+      .then(r => r.json())
+      .then(setConfig)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!form.fecha) { setSlots([]); return; }
+    setLoadingSlots(true);
+    setForm(f => ({ ...f, hora: "" }));
+    fetch(`${API}/slots?fecha=${form.fecha}`)
+      .then(r => r.json())
+      .then(data => { setSlots(data.slots || []); setLoadingSlots(false); })
+      .catch(() => { setSlots([]); setLoadingSlots(false); });
+  }, [form.fecha]);
+
   const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-    setErrors((err) => ({ ...err, [e.target.name]: undefined }));
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    setErrors(err => ({ ...err, [e.target.name]: undefined }));
+  };
+
+  const hoy = new Date().toISOString().split("T")[0];
+
+  const validarFecha = (fechaStr) => {
+    if (!config) return true;
+    const fecha = new Date(fechaStr + "T00:00:00");
+    const diaSemana = fecha.getDay();
+    const noTrabaja = diasNoTrabajo(config.dias_trabajo);
+    return !noTrabaja.includes(diaSemana);
   };
 
   const handleSubmit = async () => {
     setServerError("");
-    setLoading(true);
 
+    const e = {};
+    if (!form.nombre.trim()) e.nombre = "El nombre es obligatorio.";
+    if (!form.email.trim())  e.email  = "El email es obligatorio.";
+    if (form.telefono) {
+      const tel = form.telefono.replace(/\s/g, "");
+      if (!/^(\+34|0034)?[6789]\d{8}$/.test(tel))
+        e.telefono = "Teléfono inválido. Ej: 612 345 678 o +34 612 345 678";
+    }
+    if (!form.servicio)  e.servicio  = "Selecciona un servicio.";
+    if (!form.fecha)     e.fecha     = "Selecciona una fecha.";
+    else if (!validarFecha(form.fecha)) e.fecha = "El barbero no trabaja ese día.";
+    if (!form.hora)      e.hora      = "Selecciona una hora.";
+
+    if (Object.keys(e).length) { setErrors(e); return; }
+
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/reservas", {
+      const res = await fetch(`${API}/reservas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre:     form.nombre,
           email:      form.email,
-          telefono:   form.telefono,
+          telefono:   form.telefono.replace(/\s/g, "") || undefined,
           servicio:   form.servicio,
-          fecha_hora: form.fecha,
+          fecha_hora: `${form.fecha}T${form.hora}`,
         }),
       });
 
@@ -44,10 +100,11 @@ export default function Reserva() {
 
       setSuccess(true);
       setForm(INITIAL);
-      setTimeout(() => setSuccess(false), 6000);
-    } catch (err) {
+      setSlots([]);
+      setTimeout(() => setSuccess(false), 7000);
+    } catch {
       setLoading(false);
-      setServerError("No se pudo conectar con el servidor. ¿Está corriendo el backend?");
+      setServerError("No se pudo conectar con el servidor.");
     }
   };
 
@@ -57,14 +114,8 @@ export default function Reserva() {
       <h2 className="section-title">Reserva tu Turno</h2>
 
       <div className={styles.form}>
-        {success && (
-          <div className={styles.successMsg}>
-            ✅ ¡Reserva enviada! Revisa tu email de confirmación.
-          </div>
-        )}
-        {serverError && (
-          <div className={styles.errorMsg}>{serverError}</div>
-        )}
+        {success && <div className={styles.successMsg}>✅ ¡Reserva enviada! Revisa tu email de confirmación.</div>}
+        {serverError && <div className={styles.errorMsg}>{serverError}</div>}
 
         <div>
           <label className={styles.label} htmlFor="nombre">Tu nombre *</label>
@@ -84,9 +135,14 @@ export default function Reserva() {
 
         <div>
           <label className={styles.label} htmlFor="telefono">Teléfono (opcional)</label>
-          <input id="telefono" name="telefono" type="tel"
-            className={styles.input}
-            placeholder="+54 11 1234 5678" value={form.telefono} onChange={handleChange} />
+          <div className={styles.phoneWrap}>
+            <span className={styles.phonePrefix}>🇪🇸 +34</span>
+            <input id="telefono" name="telefono" type="tel"
+              className={`${styles.input} ${styles.phoneInput} ${errors.telefono ? styles.inputError : ""}`}
+              placeholder="612 345 678" value={form.telefono} onChange={handleChange}
+              maxLength={15} />
+          </div>
+          {errors.telefono && <span className={styles.error}>{errors.telefono}</span>}
         </div>
 
         <div>
@@ -95,7 +151,7 @@ export default function Reserva() {
             className={`${styles.input} ${errors.servicio ? styles.inputError : ""}`}
             value={form.servicio} onChange={handleChange}>
             <option value="">Seleccionar servicio...</option>
-            {SERVICIOS.map((s) => (
+            {SERVICIOS.map(s => (
               <option key={s.id} value={s.title}>{s.title} — {s.precio}</option>
             ))}
           </select>
@@ -103,19 +159,38 @@ export default function Reserva() {
         </div>
 
         <div>
-          <label className={styles.label} htmlFor="fecha">Fecha y hora *</label>
-          <input id="fecha" name="fecha" type="datetime-local"
-            className={`${styles.input} ${errors.fecha_hora ? styles.inputError : ""}`}
-            value={form.fecha} onChange={handleChange} />
-          {errors.fecha_hora && <span className={styles.error}>{errors.fecha_hora}</span>}
+          <label className={styles.label} htmlFor="fecha">Fecha *</label>
+          <input id="fecha" name="fecha" type="date"
+            className={`${styles.input} ${errors.fecha ? styles.inputError : ""}`}
+            min={hoy} value={form.fecha} onChange={handleChange} />
+          {errors.fecha && <span className={styles.error}>{errors.fecha}</span>}
         </div>
 
-        <button
-          className="btn-gold"
+        {form.fecha && (
+          <div>
+            <label className={styles.label}>Hora disponible *</label>
+            {loadingSlots ? (
+              <p className={styles.slotLoading}>Cargando horarios...</p>
+            ) : slots.length > 0 ? (
+              <div className={styles.slotsGrid}>
+                {slots.map(slot => (
+                  <button key={slot} type="button"
+                    className={`${styles.slotBtn} ${form.hora === slot ? styles.slotActive : ""}`}
+                    onClick={() => { setForm(f => ({ ...f, hora: slot })); setErrors(e => ({ ...e, hora: undefined })); }}>
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.slotEmpty}>No hay horarios disponibles para este día.</p>
+            )}
+            {errors.hora && <span className={styles.error}>{errors.hora}</span>}
+          </div>
+        )}
+
+        <button className="btn-gold"
           style={{ marginTop: "0.5rem", width: "100%", opacity: loading ? 0.7 : 1 }}
-          onClick={handleSubmit}
-          disabled={loading}
-        >
+          onClick={handleSubmit} disabled={loading}>
           {loading ? "Enviando..." : "Confirmar Reserva"}
         </button>
       </div>
