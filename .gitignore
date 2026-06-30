@@ -17,3 +17,6 @@ duky-barber/dist/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# El backend tiene su propio repositorio
+duky-backend/
