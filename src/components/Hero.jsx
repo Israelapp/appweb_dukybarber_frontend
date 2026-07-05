@@ -7,8 +7,7 @@ export default function Hero() {
 
       <div className={styles.logoWrap}>
         <img
-          src="/imagenes/log_duky.jpg"
-          onError={(e) => { e.target.style.display = "none"; }}
+          src="/logo_duky.jpg"
           className={styles.logo}
           alt="Logo Duky Barber"
         />
