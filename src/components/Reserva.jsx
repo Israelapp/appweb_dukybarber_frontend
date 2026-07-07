@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { SERVICIOS } from "../data/servicios";
 import styles from "./Reserva.module.css";
 
-const API = "http://localhost:5000/api";
+const API = "https://appweb-dukybarber-backend.onrender.com/api";
 const INITIAL = { nombre: "", email: "", telefono: "", servicio: "", fecha: "", hora: "" };
 
 function diasNoTrabajo(diasTrabajo) {
