@@ -15,21 +15,21 @@ function diasNoTrabajo(diasTrabajo) {
 }
 
 export default function Reserva() {
-  const [form, setForm]         = useState(INITIAL);
-  const [errors, setErrors]     = useState({});
-  const [loading, setLoading]   = useState(false);
-  const [success, setSuccess]   = useState(false);
+  const [form, setForm] = useState(INITIAL);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  const [slots, setSlots]       = useState([]);
+  const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [config, setConfig]     = useState(null);
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
     fetch(`${API}/config`)
       .then(r => r.json())
       .then(setConfig)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -62,33 +62,37 @@ export default function Reserva() {
 
     const e = {};
     if (!form.nombre.trim()) e.nombre = "El nombre es obligatorio.";
-    if (!form.email.trim())  e.email  = "El email es obligatorio.";
+    if (!form.email.trim()) e.email = "El email es obligatorio.";
     if (form.telefono) {
       const tel = form.telefono.replace(/\s/g, "");
       if (!/^(\+34|0034)?[6789]\d{8}$/.test(tel))
         e.telefono = "Teléfono inválido. Ej: 612 345 678 o +34 612 345 678";
     }
-    if (!form.servicio)  e.servicio  = "Selecciona un servicio.";
-    if (!form.fecha)     e.fecha     = "Selecciona una fecha.";
+    if (!form.servicio) e.servicio = "Selecciona un servicio.";
+    if (!form.fecha) e.fecha = "Selecciona una fecha.";
     else if (!validarFecha(form.fecha)) e.fecha = "El barbero no trabaja ese día.";
-    if (!form.hora)      e.hora      = "Selecciona una hora.";
+    if (!form.hora) e.hora = "Selecciona una hora.";
 
     if (Object.keys(e).length) { setErrors(e); return; }
 
     setLoading(true);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
       const res = await fetch(`${API}/reservas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
-          nombre:     form.nombre,
-          email:      form.email,
-          telefono:   form.telefono.replace(/\s/g, "") || undefined,
-          servicio:   form.servicio,
+          nombre: form.nombre,
+          email: form.email,
+          telefono: form.telefono.replace(/\s/g, "") || undefined,
+          servicio: form.servicio,
           fecha_hora: `${form.fecha}T${form.hora}`,
         }),
       });
-
+      clearTimeout(timeout);
       const data = await res.json();
       setLoading(false);
 
