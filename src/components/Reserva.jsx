@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { SERVICIOS } from "../data/servicios";
 import styles from "./Reserva.module.css";
 
-const API = "https://appweb-dukybarber-backend.onrender.com/api";
+const API = import.meta.env.VITE_API_URL || "https://appweb-dukybarber-backend.onrender.com/api"; // URL del backend (Agregado Remitente en email_service)
 const INITIAL = { nombre: "", email: "", telefono: "", servicio: "", fecha: "", hora: "" };
 
 function diasNoTrabajo(diasTrabajo) {
